@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M10 — AI Strategy Builder · Carelon</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── VARIABLES ── */
+:root {
+  --bg:#090b10; --surface:#0e1118; --surface2:#13161f; --border:#1e2333;
+  --gold:#d4a830; --gold2:#f0c840; --gold-dim:rgba(212,168,48,0.10); --gold-bdr:rgba(212,168,48,0.25);
+  --green:#38c878; --green-dim:rgba(56,200,120,0.10); --green-bdr:rgba(56,200,120,0.30);
+  --red:#e85050; --red-dim:rgba(232,80,80,0.10); --red-bdr:rgba(232,80,80,0.30);
+  --blue:#4890e8; --blue-dim:rgba(72,144,232,0.10); --blue-bdr:rgba(72,144,232,0.30);
+  --text:#c0cce0; --muted:#4a5470; --ivory:#e8eef8;
+}
+
+/* ── RESET ── */
+*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ── BASE ── */
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'IBM Plex Sans',sans-serif;
+  min-height:100vh; display:flex; flex-direction:column;
+  overflow-x:hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 1200px 500px at 50% 0%,rgba(212,168,48,0.05) 0%,transparent 55%),
+    radial-gradient(ellipse 700px 400px at 0% 100%,rgba(72,144,232,0.03) 0%,transparent 55%);
+}
+
+/* ── HEADER ── */
+.app-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 40px; border-bottom:1px solid var(--border);
+  background:rgba(9,11,16,0.98); flex-shrink:0; z-index:20; position:sticky; top:0;
+}
+.ah-id { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); line-height:1.7; }
+.ah-id span { color:var(--gold); }
+.ah-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--ivory); letter-spacing:-0.5px; }
+.save-pdf-btn {
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  padding:8px 18px; background:var(--gold); color:#090b10;
+  border:none; border-radius:1px; cursor:pointer; transition:all 0.2s; font-weight:500;
+  display:flex; align-items:center; gap:6px;
+}
+.save-pdf-btn:hover { background:var(--gold2); }
+.save-pdf-btn::before { content:'↓'; font-size:13px; }
+
+/* ── PROGRESS BAR ── */
+.progress-bar {
+  display:flex; align-items:center; padding:14px 40px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  flex-shrink:0; z-index:10; position:sticky; top:49px;
+}
+.pb-step { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.pb-circle {
+  width:28px; height:28px; border-radius:50%;
+  border:1.5px solid var(--border);
+  background:var(--surface2);
+  font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500;
+  color:var(--muted); display:flex; align-items:center; justify-content:center;
+  transition:all 0.25s;
+}
+.pb-step.done .pb-circle { background:var(--gold-dim); border-color:var(--gold-bdr); color:var(--gold); }
+.pb-step.active .pb-circle { background:var(--gold); border-color:var(--gold); color:#090b10; box-shadow:0 0 10px rgba(212,168,48,0.4); }
+.pb-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); transition:color 0.25s; }
+.pb-step.active .pb-label { color:var(--gold); }
+.pb-step.done .pb-label { color:var(--muted); }
+.pb-line { flex:1; height:1.5px; background:var(--border); margin:0 16px; max-width:80px; }
+.pb-line.done { background:var(--gold-bdr); }
+
+/* ── MAIN ── */
+.main { flex:1; position:relative; z-index:1; }
+.section { display:none; padding:32px 40px 40px; max-width:1100px; margin:0 auto; }
+.section.active { display:block; }
+
+/* ── SECTION HEADER ── */
+.sec-hdr { margin-bottom:24px; }
+.sec-tag {
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:4px;
+  text-transform:uppercase; color:var(--gold); margin-bottom:8px;
+}
+.sec-title { font-family:'Syne',sans-serif; font-size:clamp(24px,3.5vw,40px); font-weight:800; color:var(--ivory); letter-spacing:-1px; line-height:1; margin-bottom:8px; }
+.sec-sub { font-size:14px; font-weight:300; color:var(--muted); max-width:640px; line-height:1.7; }
+
+/* ── PARTICIPANT INFO (S1 top) ── */
+.participant-row { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; margin-bottom:24px; }
+.pi-field { display:flex; flex-direction:column; gap:5px; }
+.pi-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+.pi-input {
+  background:var(--surface); border:1px solid var(--border); border-radius:2px;
+  padding:9px 14px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:500;
+  color:var(--ivory); outline:none; transition:border-color 0.2s;
+}
+.pi-input:focus { border-color:var(--gold); }
+.pi-input::placeholder { color:var(--muted); font-weight:300; }
+.pi-date { padding-top:22px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+
+/* ── SCORING LEGEND ── */
+.legend { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+.leg-card { border-radius:2px; padding:10px 14px; border:1px solid; }
+.lc-1{border-color:var(--red-bdr);background:var(--red-dim);}
+.lc-2{border-color:rgba(212,168,48,0.3);background:rgba(212,168,48,0.08);}
+.lc-3{border-color:var(--blue-bdr);background:var(--blue-dim);}
+.lc-4{border-color:var(--green-bdr);background:var(--green-dim);}
+.leg-score { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; margin-bottom:2px; }
+.lc-1 .leg-score{color:var(--red);} .lc-2 .leg-score{color:var(--gold);} .lc-3 .leg-score{color:var(--blue);} .lc-4 .leg-score{color:var(--green);}
+.leg-lbl { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; }
+.lc-1 .leg-lbl{color:var(--red);} .lc-2 .leg-lbl{color:var(--gold);} .lc-3 .leg-lbl{color:var(--blue);} .lc-4 .leg-lbl{color:var(--green);}
+.leg-desc { font-size:11px; font-weight:300; color:var(--muted); margin-top:3px; line-height:1.4; }
+
+/* ── MATRIX TABLE ── */
+.matrix-wrap { background:var(--surface); border:1px solid var(--border); border-radius:3px; overflow:hidden; margin-bottom:20px; }
+.matrix-table { width:100%; border-collapse:collapse; }
+.matrix-table th {
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  color:var(--muted); padding:10px 14px; border-bottom:1px solid var(--border);
+  background:var(--surface2); text-align:center;
+}
+.matrix-table th.left { text-align:left; }
+.matrix-table td { padding:10px 14px; border-bottom:1px solid rgba(30,35,51,0.7); vertical-align:middle; }
+.matrix-table tr.top-row td { background:rgba(212,168,48,0.04); }
+.matrix-table tr:last-child td { border-bottom:none; }
+.m-num { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:var(--gold); text-align:center; }
+.m-crit { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); text-align:center; line-height:1.5; }
+.m-input {
+  background:var(--surface2); border:1px solid var(--border); border-radius:2px;
+  padding:6px 10px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500;
+  color:var(--ivory); outline:none; width:100%; transition:border-color 0.2s;
+}
+.m-input:focus { border-color:var(--gold); }
+.m-input::placeholder { color:var(--muted); font-weight:300; }
+.m-select {
+  background:var(--surface2); border:1px solid var(--border); border-radius:2px;
+  padding:8px 4px; font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:700;
+  color:var(--ivory); outline:none; width:52px; text-align:center; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+}
+.m-select:focus { border-color:var(--gold); }
+.m-total { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; text-align:center; }
+.m-badge { text-align:center; }
+.badge-pill {
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+  padding:4px 10px; border-radius:1px; display:inline-block;
+}
+.badge-top { background:rgba(212,168,48,0.18); color:var(--gold2); border:1px solid rgba(212,168,48,0.5); }
+.badge-strong { background:var(--blue-dim); color:var(--blue); border:1px solid var(--blue-bdr); }
+.badge-consider { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+
+/* ── USE CASE BANNER (S2) ── */
+.uc-banner {
+  background:var(--surface); border:1px solid var(--gold-bdr); border-left:5px solid var(--gold);
+  border-radius:0 3px 3px 0; padding:14px 20px; margin-bottom:20px;
+  display:flex; align-items:center; gap:12px;
+}
+.ucb-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); flex-shrink:0; }
+.ucb-name { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:var(--ivory); flex:1; }
+.ucb-hint { font-size:12px; font-weight:300; color:var(--muted); }
+
+/* ── ROI CALCULATOR ── */
+.calc-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.inputs-panel { display:flex; flex-direction:column; gap:14px; }
+.panel-title {
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  color:var(--gold); padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:2px;
+}
+.input-group { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:14px 16px; }
+.ig-section {
+  font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2.5px; text-transform:uppercase;
+  color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;
+}
+.ig-section::after { content:''; flex:1; height:1px; background:var(--border); }
+.input-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+.input-row:last-child { margin-bottom:0; }
+.ir-label { font-size:12px; font-weight:300; color:var(--text); flex:1; line-height:1.35; }
+.ir-wrap { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.ir-prefix { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); }
+.ir-input {
+  width:100px; background:var(--surface2); border:1px solid var(--border); border-radius:2px;
+  padding:6px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  font-weight:500; color:var(--ivory); outline:none; transition:border-color 0.2s;
+}
+.ir-input:focus { border-color:var(--gold); }
+.ir-suffix { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); min-width:24px; }
+
+.results-panel { display:flex; flex-direction:column; gap:12px; }
+.hero-metric {
+  background:var(--surface); border:1px solid var(--gold-bdr); border-radius:3px;
+  padding:18px 20px; position:relative; overflow:hidden;
+}
+.hero-metric::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg,var(--gold),var(--gold2),transparent); }
+.hm-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+.hm-value { font-family:'Syne',sans-serif; font-size:clamp(32px,4.5vw,56px); font-weight:800; color:var(--gold); letter-spacing:-1px; line-height:1; transition:all 0.4s; }
+.hm-sub { font-size:11px; font-weight:300; color:var(--muted); margin-top:3px; }
+.metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.metric-card { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:12px 14px; }
+.mc-label { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.mc-value { font-family:'Syne',sans-serif; font-size:clamp(16px,2.2vw,24px); font-weight:700; letter-spacing:-0.5px; transition:all 0.4s; }
+.mc-pos{color:var(--green);} .mc-neg{color:var(--red);} .mc-blue{color:var(--blue);}
+.comparison-bar { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:12px 14px; }
+.cb-title { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.cb-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+.cb-row:last-child { margin-bottom:0; }
+.cbr-label { font-size:11px; font-weight:300; color:var(--muted); width:72px; flex-shrink:0; }
+.cbr-track { flex:1; height:7px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+.cbr-bar { height:100%; border-radius:2px; transition:width 0.5s ease; }
+.cbr-before{background:var(--red);} .cbr-after{background:var(--green);}
+.cbr-val { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text); width:60px; text-align:right; flex-shrink:0; }
+.kpi-panel { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:12px 14px; }
+.kpi-title { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.kpi-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.kpi-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.kpi-row:last-child { margin-bottom:0; }
+.kpi-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.kpi-lbl { font-size:11px; font-weight:300; color:var(--muted); flex:1; }
+.kpi-val { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text); transition:all 0.4s; }
+.reset-row { display:flex; justify-content:flex-end; }
+.reset-btn {
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  padding:8px 16px; border:1px solid var(--border); color:var(--muted);
+  background:transparent; border-radius:1px; cursor:pointer; transition:all 0.2s;
+}
+.reset-btn:hover { border-color:var(--muted); color:var(--text); }
+
+/* ── BLUEPRINT ── */
+.blueprint-sections { display:flex; flex-direction:column; gap:24px; }
+.bp-section { background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.bps-hdr {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 20px; border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.bps-num { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--border); line-height:1; width:32px; flex-shrink:0; }
+.bps-titles {}
+.bps-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2.5px; text-transform:uppercase; margin-bottom:3px; }
+.bps-name { font-size:15px; font-weight:500; color:var(--ivory); line-height:1.2; }
+.bps-body { padding:20px; display:flex; flex-direction:column; gap:16px; }
+
+/* Blueprint colour accents */
+.bps-1 .bps-tag{color:var(--gold);} .bps-1 .bps-hdr{border-left:4px solid var(--gold);}
+.bps-2 .bps-tag{color:var(--blue);} .bps-2 .bps-hdr{border-left:4px solid var(--blue);}
+.bps-3 .bps-tag{color:var(--red);} .bps-3 .bps-hdr{border-left:4px solid var(--red);}
+.bps-4 .bps-tag{color:var(--green);} .bps-4 .bps-hdr{border-left:4px solid var(--green);}
+.bps-5 .bps-tag{color:var(--gold);} .bps-5 .bps-hdr{border-left:4px solid var(--gold);}
+.bps-6 .bps-tag{color:var(--green);} .bps-6 .bps-hdr{border-left:4px solid var(--green);}
+
+/* Textarea */
+.bp-textarea {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:2px; padding:12px 14px;
+  font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:300;
+  color:var(--ivory); outline:none; resize:none; overflow:hidden;
+  line-height:1.65; transition:border-color 0.2s; min-height:60px;
+}
+.bp-textarea:focus { border-color:var(--gold); }
+.bp-textarea::placeholder { color:var(--muted); }
+.bp-input {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:2px; padding:8px 12px;
+  font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:300;
+  color:var(--ivory); outline:none; transition:border-color 0.2s;
+}
+.bp-input:focus { border-color:var(--gold); }
+.bp-input::placeholder { color:var(--muted); }
+.field-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+
+/* Tactic cards */
+.tactic-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.tactic-card { background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:14px; position:relative; overflow:hidden; }
+.tactic-card::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; }
+.tc-1::before{background:var(--blue);} .tc-2::before{background:rgba(72,144,232,0.5);} .tc-3::before{background:rgba(72,144,232,0.25);}
+.tc-rank { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--blue); margin-bottom:10px; }
+.tc-fields { display:flex; flex-direction:column; gap:8px; }
+
+/* Governance cells */
+.gov-cells { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.gov-cell { display:flex; flex-direction:column; gap:6px; }
+
+/* Skills table */
+.skills-rows { display:flex; flex-direction:column; gap:10px; }
+.skill-row { display:grid; grid-template-columns:2fr 120px 1.5fr 1fr; gap:10px; align-items:start; }
+.how-select {
+  background:var(--surface2); border:1px solid var(--border); border-radius:2px;
+  padding:8px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px;
+  color:var(--ivory); outline:none; cursor:pointer; width:100%;
+  -webkit-appearance:none; appearance:none;
+}
+.how-select:focus { border-color:var(--gold); }
+
+/* ROI auto-populated boxes */
+.roi-boxes { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.roi-box { background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:14px; text-align:center; }
+.roi-box.primary { background:var(--gold-dim); border-color:var(--gold-bdr); }
+.rb-label { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.rb-value { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; letter-spacing:-1px; line-height:1; margin-bottom:4px; transition:all 0.4s; }
+.roi-box.primary .rb-value { color:var(--gold); }
+.roi-box:not(.primary) .rb-value { color:var(--ivory); }
+.rb-sub { font-size:11px; font-weight:300; color:var(--muted); }
+.roi-note { font-size:12px; font-weight:300; color:var(--muted); padding:8px 12px; background:var(--surface2); border-radius:2px; border:1px solid var(--border); }
+
+/* Roadmap */
+.roadmap-cols { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.rm-col { display:flex; flex-direction:column; gap:8px; }
+.rm-badge {
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  padding:4px 10px; border-radius:1px; display:inline-block; align-self:flex-start;
+}
+.rm-1 .rm-badge{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-bdr);}
+.rm-2 .rm-badge{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-bdr);}
+.rm-3 .rm-badge{background:var(--green-dim);color:var(--green);border:1px solid var(--green-bdr);}
+
+/* Copilot prompt box */
+.copilot-section { border-top:1px solid var(--border); margin-top:4px; padding-top:12px; }
+.copilot-toggle {
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  color:var(--blue); background:none; border:none; padding:0; transition:opacity 0.2s;
+}
+.copilot-toggle:hover { opacity:0.7; }
+.copilot-toggle::before { content:'▶'; font-size:8px; transition:transform 0.2s; }
+.copilot-toggle.open::before { transform:rotate(90deg); }
+.copilot-box { display:none; margin-top:10px; }
+.copilot-box.visible { display:block; }
+.cb-inner {
+  background:rgba(72,144,232,0.06); border:1px solid var(--blue-bdr);
+  border-radius:3px; padding:14px 16px;
+}
+.cb-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.cb-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--blue); }
+.copy-btn {
+  font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:1.5px; text-transform:uppercase;
+  padding:4px 12px; border:1px solid var(--blue-bdr); color:var(--blue);
+  background:transparent; border-radius:1px; cursor:pointer; transition:all 0.2s;
+}
+.copy-btn:hover { background:var(--blue-dim); }
+.copy-btn.copied { color:var(--green); border-color:var(--green-bdr); }
+.cb-prompt {
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text);
+  white-space:pre-wrap; line-height:1.7;
+  background:var(--surface2); border-radius:2px; padding:10px 12px;
+  border:1px solid var(--border);
+}
+
+/* ── NAVIGATION FOOTER ── */
+.nav-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 40px; border-top:1px solid var(--border);
+  background:rgba(9,11,16,0.98); flex-shrink:0; position:sticky; bottom:0; z-index:20;
+}
+.nav-btn {
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:2.5px; text-transform:uppercase;
+  padding:12px 28px; border-radius:1px; cursor:pointer; border:1px solid; transition:all 0.2s;
+}
+.nav-btn.back { border-color:var(--border); color:var(--muted); background:transparent; }
+.nav-btn.back:hover { border-color:var(--muted); color:var(--text); }
+.nav-btn.back:disabled { opacity:0.3; cursor:not-allowed; }
+.nav-btn.next { border-color:var(--gold); color:#090b10; background:var(--gold); }
+.nav-btn.next:hover { background:var(--gold2); }
+.nav-step-label { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+
+/* ── PRINT STYLES ── */
+@media print {
+  @page { margin:18mm 18mm 20mm; size:A4; }
+
+  body { background:white !important; color:#1a1a1a !important; }
+  body::before { display:none; }
+
+  .app-hdr, .progress-bar, .nav-footer { display:none !important; }
+
+  .section { display:block !important; padding:0 !important; max-width:100% !important; }
+
+  .print-doc-header { display:block !important; }
+  #s1 { page-break-before:avoid; }
+  #s2 { page-break-before:always; }
+  #s3 { page-break-before:always; }
+
+  /* Section headings */
+  .sec-hdr { margin-bottom:14px !important; }
+  .sec-tag { color:#8b6010 !important; }
+  .sec-title { color:#1a1a1a !important; font-size:26px !important; }
+  .sec-sub { color:#666 !important; }
+
+  /* Scoring legend */
+  .legend { gap:6px !important; }
+  .leg-card { padding:7px 10px !important; }
+  .leg-score { font-size:18px !important; }
+
+  /* Matrix */
+  .matrix-wrap { border:1px solid #ccc !important; }
+  .matrix-table th { background:#f5f5f0 !important; color:#666 !important; }
+  .matrix-table td { padding:8px 12px !important; }
+  .m-input, .m-select { background:white !important; border:1px solid #ccc !important; color:#1a1a1a !important; }
+  .m-total { color:#1a1a1a !important; }
+
+  /* ROI model — hide inputs, show results only */
+  .inputs-panel { display:none !important; }
+  .calc-grid { grid-template-columns:1fr !important; }
+  .roi-print-summary { display:block !important; }
+
+  /* Blueprint */
+  .bp-section { border:1px solid #ccc !important; break-inside:avoid; margin-bottom:14px; }
+  .bps-hdr { background:#f8f6f0 !important; border-bottom:1px solid #ccc !important; }
+  .bps-num { color:#ccc !important; }
+  .bps-name { color:#1a1a1a !important; }
+  .bp-textarea, .bp-input {
+    background:white !important; border:1px solid #ddd !important;
+    color:#1a1a1a !important; overflow:visible !important; height:auto !important;
+    resize:none !important;
+  }
+  .how-select { background:white !important; border:1px solid #ddd !important; color:#1a1a1a !important; }
+  .skill-row { border-bottom:1px solid #eee; padding-bottom:8px; }
+  .field-label { color:#888 !important; }
+
+  /* ROI boxes in blueprint */
+  .roi-box { background:#fdf5e4 !important; border:1px solid #d4a830 !important; }
+  .rb-value { color:#8b6010 !important; }
+
+  /* Roadmap */
+  .roadmap-cols { gap:10px !important; }
+
+  /* Hide copilot prompts, participant row in print */
+  .copilot-section, .participant-row .pi-date { display:none !important; }
+  .copilot-toggle, .copilot-box { display:none !important; }
+
+  /* Tactic cards */
+  .tactic-cards { grid-template-columns:repeat(3,1fr) !important; }
+  .tactic-card { background:#f8f8f0 !important; border:1px solid #ccc !important; }
+
+  /* ROI summary for print */
+  .roi-boxes { gap:8px !important; }
+
+  /* Print header */
+  .print-doc-header {
+    border-bottom:3px solid #1a1a1a;
+    padding-bottom:16px;
+    margin-bottom:24px;
+  }
+  .pdh-org { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#888; margin-bottom:6px; }
+  .pdh-title { font-family:'Syne',sans-serif; font-size:32px; font-weight:800; color:#1a1a1a; letter-spacing:-1px; }
+  .pdh-meta { display:flex; gap:24px; margin-top:8px; }
+  .pdh-item { font-family:'IBM Plex Mono',monospace; font-size:10px; color:#888; }
+  .pdh-item span { color:#1a1a1a; font-weight:500; }
+}
+
+/* Print header — hidden on screen */
+.print-doc-header { display:none; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════
+     APP HEADER
+═══════════════════════════════════ -->
+<div class="app-hdr">
+  <div class="ah-id">Carelon · <span>C-Suite AI Workshop</span><br>Module 10 · AI Strategy Builder</div>
+  <div class="ah-title">AI Strategy Builder</div>
+  <button class="save-pdf-btn" onclick="savePDF()">Save as PDF</button>
+</div>
+
+<!-- ═══════════════════════════════════
+     PROGRESS BAR
+═══════════════════════════════════ -->
+<div class="progress-bar">
+  <div class="pb-step active" id="pb1" onclick="goToStep(1)">
+    <div class="pb-circle">1</div>
+    <div class="pb-label">Feasibility Matrix</div>
+  </div>
+  <div class="pb-line" id="pbl1"></div>
+  <div class="pb-step" id="pb2" onclick="goToStep(2)">
+    <div class="pb-circle">2</div>
+    <div class="pb-label">ROI Model</div>
+  </div>
+  <div class="pb-line" id="pbl2"></div>
+  <div class="pb-step" id="pb3" onclick="goToStep(3)">
+    <div class="pb-circle">3</div>
+    <div class="pb-label">Strategy Blueprint</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════ -->
+<div class="main">
+
+<!-- ── PRINT DOCUMENT HEADER (hidden on screen) ── -->
+<div class="print-doc-header" id="print-hdr">
+  <div class="pdh-org">Carelon C-Suite AI Workshop · Module 10 · AI Strategy Builder</div>
+  <div class="pdh-title">AI Strategy Blueprint</div>
+  <div class="pdh-meta">
+    <div class="pdh-item">Name: <span id="print-name">—</span></div>
+    <div class="pdh-item">Function: <span id="print-fn">—</span></div>
+    <div class="pdh-item">Date: <span id="print-date">—</span></div>
+    <div class="pdh-item">Top Use Case: <span id="print-uc">—</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION 1 — FEASIBILITY MATRIX
+══════════════════════════════════ -->
+<div class="section active" id="s1">
+  <div class="sec-hdr">
+    <div class="sec-tag">Section 1 of 3</div>
+    <div class="sec-title">Feasibility Matrix</div>
+    <div class="sec-sub">Score your top 3 AI use cases against four criteria. The highest total becomes your TOP PICK and carries forward into the ROI Model.</div>
+  </div>
+
+  <!-- Participant info -->
+  <div class="participant-row">
+    <div class="pi-field">
+      <div class="pi-label">Your Name</div>
+      <input class="pi-input" id="pi-name" type="text" placeholder="e.g. Priya Sharma" oninput="saveLS('pi-name')">
+    </div>
+    <div class="pi-field">
+      <div class="pi-label">Your Function / Team</div>
+      <input class="pi-input" id="pi-fn" type="text" placeholder="e.g. VP, Utilisation Management" oninput="saveLS('pi-fn')">
+    </div>
+    <div class="pi-date" id="today-date"></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="leg-card lc-1"><div class="leg-score">1</div><div class="leg-lbl">Low</div><div class="leg-desc">Minimal impact, high barrier, or significant risk</div></div>
+    <div class="leg-card lc-2"><div class="leg-score">2</div><div class="leg-lbl">Moderate</div><div class="leg-desc">Some value, medium complexity or risk</div></div>
+    <div class="leg-card lc-3"><div class="leg-score">3</div><div class="leg-lbl">High</div><div class="leg-desc">Clear value, manageable complexity, low risk</div></div>
+    <div class="leg-card lc-4"><div class="leg-score">4</div><div class="leg-lbl">Very High</div><div class="leg-desc">Strong case on all dimensions — prioritise this</div></div>
+  </div>
+
+  <!-- Matrix -->
+  <div class="matrix-wrap">
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th class="left" style="width:36px">#</th>
+          <th class="left" style="width:260px">Use Case &amp; Function</th>
+          <th style="width:80px"><div class="m-crit">💰<br>ROI<br>Potential</div></th>
+          <th style="width:80px"><div class="m-crit">⚙️<br>Feasibility<br>(Tech + Org)</div></th>
+          <th style="width:80px"><div class="m-crit">⚖️<br>Compliance<br>Risk (inv.)</div></th>
+          <th style="width:80px"><div class="m-crit">⏱️<br>Time to<br>Value</div></th>
+          <th style="width:70px"><div class="m-crit">Total<br>/16</div></th>
+          <th style="width:110px"><div class="m-crit">Priority</div></th>
+        </tr>
+      </thead>
+      <tbody id="matrix-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION 2 — ROI MODEL
+══════════════════════════════════ -->
+<div class="section" id="s2">
+  <div class="sec-hdr">
+    <div class="sec-tag">Section 2 of 3</div>
+    <div class="sec-title">ROI Model</div>
+    <div class="sec-sub">Build the financial case for your TOP PICK use case. Enter your numbers — outputs update live. Your Annual Net Saving will auto-populate in the Blueprint.</div>
+  </div>
+
+  <!-- Use case banner — auto-populated from S1 -->
+  <div class="uc-banner">
+    <div class="ucb-tag">Building ROI for</div>
+    <div class="ucb-name" id="uc-banner-name">—</div>
+    <div class="ucb-hint">from Feasibility Matrix TOP PICK</div>
+  </div>
+
+  <div class="calc-grid">
+    <!-- INPUTS -->
+    <div class="inputs-panel">
+      <div class="panel-title">Model Inputs — Enter Your Numbers</div>
+
+      <div class="input-group">
+        <div class="ig-section">Current State — Your Process</div>
+        <div class="input-row">
+          <div class="ir-label">Monthly decisions / transactions processed</div>
+          <div class="ir-wrap"><input class="ir-input" id="monthly_vol" type="number" value="200000" oninput="recalc();saveROI()"></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">Current cost per unit (labour + overhead)</div>
+          <div class="ir-wrap"><span class="ir-prefix">$</span><input class="ir-input" id="cost_per" type="number" value="18" step="0.5" oninput="recalc();saveROI()"></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">Average processing time per unit (hours)</div>
+          <div class="ir-wrap"><input class="ir-input" id="turnaround_before" type="number" value="72" oninput="recalc();saveROI()"><span class="ir-suffix">hrs</span></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">FTEs currently assigned to this process</div>
+          <div class="ir-wrap"><input class="ir-input" id="ftes" type="number" value="48" oninput="recalc();saveROI()"></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="ig-section">AI-Assisted State — Post Deployment</div>
+        <div class="input-row">
+          <div class="ir-label">Estimated automation rate</div>
+          <div class="ir-wrap"><input class="ir-input" id="auto_rate" type="number" value="74" max="100" oninput="recalc();saveROI()"><span class="ir-suffix">%</span></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">AI-assisted cost per unit</div>
+          <div class="ir-wrap"><span class="ir-prefix">$</span><input class="ir-input" id="ai_cost_per" type="number" value="4.50" step="0.25" oninput="recalc();saveROI()"></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">AI processing time — automated cases</div>
+          <div class="ir-wrap"><input class="ir-input" id="turnaround_after" type="number" value="0.025" step="0.005" oninput="recalc();saveROI()"><span class="ir-suffix">hrs</span></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="ig-section">Investment — Implementation &amp; Licensing</div>
+        <div class="input-row">
+          <div class="ir-label">One-time implementation cost</div>
+          <div class="ir-wrap"><span class="ir-prefix">$</span><input class="ir-input" id="impl_cost" type="number" value="2500000" step="100000" oninput="recalc();saveROI()"></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">Annual licensing / SaaS cost</div>
+          <div class="ir-wrap"><span class="ir-prefix">$</span><input class="ir-input" id="annual_lic" type="number" value="1200000" step="100000" oninput="recalc();saveROI()"></div>
+        </div>
+        <div class="input-row">
+          <div class="ir-label">Contingency buffer</div>
+          <div class="ir-wrap"><input class="ir-input" id="contingency" type="number" value="20" max="50" oninput="recalc();saveROI()"><span class="ir-suffix">%</span></div>
+        </div>
+      </div>
+      <div class="reset-row"><button class="reset-btn" onclick="resetROI()">↺ Reset to defaults</button></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-panel">
+      <div class="panel-title">Live Output — Updates as you type</div>
+      <div class="hero-metric">
+        <div class="hm-label">Projected Annual Net Saving</div>
+        <div class="hm-value" id="annual_saving">$0</div>
+        <div class="hm-sub">After licensing costs · Before implementation amortisation</div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="mc-label">Payback Period</div><div class="mc-value mc-blue" id="payback">— months</div></div>
+        <div class="metric-card"><div class="mc-label">3-Year Net ROI</div><div class="mc-value mc-pos" id="roi_3yr">— %</div></div>
+        <div class="metric-card"><div class="mc-label">Cost Per Unit — Before</div><div class="mc-value mc-neg" id="cpd_before">$—</div></div>
+        <div class="metric-card"><div class="mc-label">Cost Per Unit — After</div><div class="mc-value mc-pos" id="cpd_after">$—</div></div>
+      </div>
+      <div class="comparison-bar">
+        <div class="cb-title">Blended Cost Per Unit — Before vs. After</div>
+        <div class="cb-row"><div class="cbr-label">Before AI</div><div class="cbr-track"><div class="cbr-bar cbr-before" id="bar_before" style="width:100%"></div></div><div class="cbr-val" id="bar_before_val">—</div></div>
+        <div class="cb-row"><div class="cbr-label">After AI</div><div class="cbr-track"><div class="cbr-bar cbr-after" id="bar_after" style="width:40%"></div></div><div class="cbr-val" id="bar_after_val">—</div></div>
+      </div>
+      <div class="kpi-panel">
+        <div class="kpi-title">Key Performance Indicators</div>
+        <div class="kpi-row"><div class="kpi-dot" style="background:var(--gold)"></div><div class="kpi-lbl">Automated units per month</div><div class="kpi-val" id="kpi_auto">—</div></div>
+        <div class="kpi-row"><div class="kpi-dot" style="background:var(--green)"></div><div class="kpi-lbl">Processing time improvement</div><div class="kpi-val" id="kpi_turnaround">—</div></div>
+        <div class="kpi-row"><div class="kpi-dot" style="background:var(--blue)"></div><div class="kpi-lbl">Staff redeployment potential (FTEs)</div><div class="kpi-val" id="kpi_ftes">—</div></div>
+        <div class="kpi-row"><div class="kpi-dot" style="background:var(--ivory)"></div><div class="kpi-lbl">Annual volume saving ($)</div><div class="kpi-val" id="kpi_vol_saving">—</div></div>
+        <div class="kpi-row"><div class="kpi-dot" style="background:var(--red)"></div><div class="kpi-lbl">Total investment yr 1 incl. contingency</div><div class="kpi-val" id="kpi_total_invest">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION 3 — BLUEPRINT
+══════════════════════════════════ -->
+<div class="section" id="s3">
+  <div class="sec-hdr">
+    <div class="sec-tag">Section 3 of 3</div>
+    <div class="sec-title">AI Strategy Blueprint</div>
+    <div class="sec-sub">Complete all 6 sections. Use the Copilot prompts for assistance — copy the prompt, run it in Copilot, then paste and edit the output here. Your ROI numbers are pre-filled from Section 2.</div>
+  </div>
+
+  <div class="blueprint-sections">
+
+    <!-- S3.1 — VISION -->
+    <div class="bp-section bps-1">
+      <div class="bps-hdr">
+        <div class="bps-num">1</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 1</div>
+          <div class="bps-name">AI Vision Statement</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div>
+          <div class="field-label">Your Vision — one sentence, outcome-focused, specific to your function</div>
+          <textarea class="bp-textarea" id="b-vision" placeholder='e.g. "By Q1 2027, our Utilisation Management function will deliver prior auth decisions in under 90 seconds for 75% of routine cases, freeing our clinical team to focus on complex, high-risk reviews where human judgment is irreplaceable."' rows="3" oninput="autoResize(this);saveLS('b-vision')"></textarea>
+        </div>
+        <div class="copilot-section">
+          <button class="copilot-toggle" onclick="toggleCopilot('cp1')">Copilot Prompt — Vision Statement</button>
+          <div class="copilot-box" id="cp1">
+            <div class="cb-inner">
+              <div class="cb-header"><div class="cb-tag">Copy into Copilot Chat</div><button class="copy-btn" onclick="copyPrompt('cp1-text',this)">Copy</button></div>
+              <div class="cb-prompt" id="cp1-text">You are helping me write an AI vision statement for my function at Carelon, a US health insurance and managed care company.
+
+My function: [YOUR FUNCTION]
+My top AI use case: [YOUR USE CASE FROM SECTION 1]
+
+Write a single-sentence AI vision statement. Requirements:
+- One sentence only — no bullet points
+- Focus on the business outcome, not the technology
+- Name a specific, measurable result
+- Structure: "By [date], [function] will [specific outcome] for [beneficiary], enabling [business result]."
+- Be ambitious but achievable within 18 months
+
+Make it compelling enough for a board presentation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3.2 — TACTICS -->
+    <div class="bp-section bps-2">
+      <div class="bps-hdr">
+        <div class="bps-num">2</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 2</div>
+          <div class="bps-name">3 Priority AI Tactics</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div class="tactic-cards">
+          <div class="tactic-card tc-1">
+            <div class="tc-rank">#1 · Highest priority</div>
+            <div class="tc-fields">
+              <div><div class="field-label">Tactic name</div><input class="bp-input" id="b-t1-name" placeholder="e.g. AI-assisted prior auth routing" oninput="saveLS('b-t1-name')"></div>
+              <div><div class="field-label">What it does</div><textarea class="bp-textarea" id="b-t1-desc" placeholder="One sentence..." rows="2" oninput="autoResize(this);saveLS('b-t1-desc')"></textarea></div>
+              <div><div class="field-label">Owner</div><input class="bp-input" id="b-t1-own" placeholder="e.g. VP UM + IT" oninput="saveLS('b-t1-own')"></div>
+              <div><div class="field-label">KPI + target</div><input class="bp-input" id="b-t1-kpi" placeholder="e.g. 75% automation rate by Q1 2027" oninput="saveLS('b-t1-kpi')"></div>
+            </div>
+          </div>
+          <div class="tactic-card tc-2">
+            <div class="tc-rank">#2 · Medium term</div>
+            <div class="tc-fields">
+              <div><div class="field-label">Tactic name</div><input class="bp-input" id="b-t2-name" placeholder="Tactic 2" oninput="saveLS('b-t2-name')"></div>
+              <div><div class="field-label">What it does</div><textarea class="bp-textarea" id="b-t2-desc" placeholder="One sentence..." rows="2" oninput="autoResize(this);saveLS('b-t2-desc')"></textarea></div>
+              <div><div class="field-label">Owner</div><input class="bp-input" id="b-t2-own" placeholder="Role" oninput="saveLS('b-t2-own')"></div>
+              <div><div class="field-label">KPI + target</div><input class="bp-input" id="b-t2-kpi" placeholder="Metric + target" oninput="saveLS('b-t2-kpi')"></div>
+            </div>
+          </div>
+          <div class="tactic-card tc-3">
+            <div class="tc-rank">#3 · Foundation</div>
+            <div class="tc-fields">
+              <div><div class="field-label">Tactic name</div><input class="bp-input" id="b-t3-name" placeholder="Tactic 3" oninput="saveLS('b-t3-name')"></div>
+              <div><div class="field-label">What it does</div><textarea class="bp-textarea" id="b-t3-desc" placeholder="One sentence..." rows="2" oninput="autoResize(this);saveLS('b-t3-desc')"></textarea></div>
+              <div><div class="field-label">Owner</div><input class="bp-input" id="b-t3-own" placeholder="Role" oninput="saveLS('b-t3-own')"></div>
+              <div><div class="field-label">KPI + target</div><input class="bp-input" id="b-t3-kpi" placeholder="Metric + target" oninput="saveLS('b-t3-kpi')"></div>
+            </div>
+          </div>
+        </div>
+        <div class="copilot-section">
+          <button class="copilot-toggle" onclick="toggleCopilot('cp2')">Copilot Prompt — 3 Priority Tactics</button>
+          <div class="copilot-box" id="cp2">
+            <div class="cb-inner">
+              <div class="cb-header"><div class="cb-tag">Copy into Copilot Chat</div><button class="copy-btn" onclick="copyPrompt('cp2-text',this)">Copy</button></div>
+              <div class="cb-prompt" id="cp2-text">You are helping me complete an AI Strategy Blueprint for my function at Carelon.
+
+My function: [YOUR FUNCTION]
+My AI vision: [PASTE FROM SECTION 1]
+My top use case: [YOUR USE CASE]
+
+Suggest 3 priority AI tactics for my function, ranked by impact × feasibility. For each tactic provide:
+1. Tactic name (5 words max)
+2. What it does — one sentence, specific to Carelon's health insurance context
+3. Who should own it — name the role
+4. One measurable KPI with a specific target and timeframe
+
+No generic AI strategy language. Be specific to my function and Carelon's business.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3.3 — GOVERNANCE -->
+    <div class="bp-section bps-3">
+      <div class="bps-hdr">
+        <div class="bps-num">3</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 3</div>
+          <div class="bps-name">Governance Model</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div class="gov-cells">
+          <div class="gov-cell">
+            <div class="field-label">AI Decision Owner</div>
+            <textarea class="bp-textarea" id="b-gov-owner" placeholder="Who is accountable for AI-assisted decisions in your function? Name the role." rows="3" oninput="autoResize(this);saveLS('b-gov-owner')"></textarea>
+          </div>
+          <div class="gov-cell">
+            <div class="field-label">HITL Threshold — when must a human approve?</div>
+            <textarea class="bp-textarea" id="b-gov-hitl" placeholder="List the specific conditions: cost threshold, case type, confidence score, etc." rows="3" oninput="autoResize(this);saveLS('b-gov-hitl')"></textarea>
+          </div>
+          <div class="gov-cell">
+            <div class="field-label">Failure Protocol — what happens when AI is wrong?</div>
+            <textarea class="bp-textarea" id="b-gov-fail" placeholder="3-tier response: Tier 1 (individual error) / Tier 2 (model drift) / Tier 3 (systemic failure)" rows="3" oninput="autoResize(this);saveLS('b-gov-fail')"></textarea>
+          </div>
+        </div>
+        <div class="copilot-section">
+          <button class="copilot-toggle" onclick="toggleCopilot('cp3')">Copilot Prompt — Governance Model</button>
+          <div class="copilot-box" id="cp3">
+            <div class="cb-inner">
+              <div class="cb-header"><div class="cb-tag">Copy into Copilot Chat</div><button class="copy-btn" onclick="copyPrompt('cp3-text',this)">Copy</button></div>
+              <div class="cb-prompt" id="cp3-text">Help me define an AI governance model for [YOUR USE CASE] in my [FUNCTION] at Carelon.
+
+I need three specific outputs:
+
+1. AI DECISION OWNER: Name the role accountable for AI-assisted decisions. Describe their specific accountability.
+
+2. HITL THRESHOLD: List the exact conditions that require human review before an AI decision is actioned. Be explicit — include cost thresholds in dollars, specific case types, confidence score cut-offs, and regulatory triggers.
+
+3. FAILURE PROTOCOL: A 3-tier response model:
+   - Tier 1: Single wrong decision — immediate actions, timeline, member notification
+   - Tier 2: Model drift detected — pause criteria, root-cause review process, timeline
+   - Tier 3: Systemic failure — rollback trigger, leadership escalation, regulatory notification
+
+Context: Carelon is a US health insurance and managed care company. PHI protection, HIPAA, and member safety are critical.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3.4 — SKILL PLAN -->
+    <div class="bp-section bps-4">
+      <div class="bps-hdr">
+        <div class="bps-num">4</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 4</div>
+          <div class="bps-name">Skill Plan</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div style="display:grid;grid-template-columns:2fr 120px 1.5fr 1fr;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+          <div class="field-label">Capability needed</div>
+          <div class="field-label">How</div>
+          <div class="field-label">Who</div>
+          <div class="field-label">By when</div>
+        </div>
+        <div class="skills-rows">
+          <div class="skill-row">
+            <textarea class="bp-textarea" id="b-sk1-cap" placeholder="Capability 1..." rows="2" oninput="autoResize(this);saveLS('b-sk1-cap')"></textarea>
+            <select class="how-select" id="b-sk1-how" onchange="saveLS('b-sk1-how')"><option value="">—</option><option>Build</option><option>Hire</option><option>Partner</option></select>
+            <input class="bp-input" id="b-sk1-who" placeholder="Role or team" oninput="saveLS('b-sk1-who')">
+            <input class="bp-input" id="b-sk1-when" placeholder="e.g. Q3 2026" oninput="saveLS('b-sk1-when')">
+          </div>
+          <div class="skill-row">
+            <textarea class="bp-textarea" id="b-sk2-cap" placeholder="Capability 2..." rows="2" oninput="autoResize(this);saveLS('b-sk2-cap')"></textarea>
+            <select class="how-select" id="b-sk2-how" onchange="saveLS('b-sk2-how')"><option value="">—</option><option>Build</option><option>Hire</option><option>Partner</option></select>
+            <input class="bp-input" id="b-sk2-who" placeholder="Role or team" oninput="saveLS('b-sk2-who')">
+            <input class="bp-input" id="b-sk2-when" placeholder="e.g. Q2 2026" oninput="saveLS('b-sk2-when')">
+          </div>
+          <div class="skill-row">
+            <textarea class="bp-textarea" id="b-sk3-cap" placeholder="Capability 3..." rows="2" oninput="autoResize(this);saveLS('b-sk3-cap')"></textarea>
+            <select class="how-select" id="b-sk3-how" onchange="saveLS('b-sk3-how')"><option value="">—</option><option>Build</option><option>Hire</option><option>Partner</option></select>
+            <input class="bp-input" id="b-sk3-who" placeholder="Role or team" oninput="saveLS('b-sk3-who')">
+            <input class="bp-input" id="b-sk3-when" placeholder="e.g. Q4 2026" oninput="saveLS('b-sk3-when')">
+          </div>
+        </div>
+        <div class="copilot-section">
+          <button class="copilot-toggle" onclick="toggleCopilot('cp4')">Copilot Prompt — Skill Plan</button>
+          <div class="copilot-box" id="cp4">
+            <div class="cb-inner">
+              <div class="cb-header"><div class="cb-tag">Copy into Copilot Chat</div><button class="copy-btn" onclick="copyPrompt('cp4-text',this)">Copy</button></div>
+              <div class="cb-prompt" id="cp4-text">Help me build a skill plan for implementing AI for [YOUR USE CASE] in my [FUNCTION] function at Carelon.
+
+Identify 3 specific capability gaps my team needs to close. For each provide:
+- The capability gap (what skill or knowledge is currently missing — be specific)
+- How to close it: Build internally / Hire a new role / Partner with a vendor or internal team
+- Who specifically: role title for hire, team name for build, vendor/partner type for partner
+- Realistic timeline: quarter target
+
+Important: Do not suggest generic "AI upskilling." Name the actual capability gap.
+Context: Large US health insurance and managed care company, [approximate team size] people.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3.5 — ROI HEADLINE (auto-populated) -->
+    <div class="bp-section bps-5">
+      <div class="bps-hdr">
+        <div class="bps-num">5</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 5 — Auto-populated from Section 2</div>
+          <div class="bps-name">ROI Headline</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div class="roi-boxes">
+          <div class="roi-box primary">
+            <div class="rb-label">Annual Net Saving</div>
+            <div class="rb-value" id="bp-saving">$—</div>
+            <div class="rb-sub">After licensing costs</div>
+          </div>
+          <div class="roi-box">
+            <div class="rb-label">Payback Period</div>
+            <div class="rb-value" id="bp-payback">—</div>
+            <div class="rb-sub">months to break even</div>
+          </div>
+          <div class="roi-box">
+            <div class="rb-label">3-Year Net ROI</div>
+            <div class="rb-value" id="bp-roi3yr">—</div>
+            <div class="rb-sub">net return on investment</div>
+          </div>
+          <div class="roi-box">
+            <div class="rb-label">Cost Per Unit</div>
+            <div class="rb-value" id="bp-cpd">—</div>
+            <div class="rb-sub" id="bp-cpd-sub">before → after</div>
+          </div>
+        </div>
+        <div class="roi-note">These figures are calculated live from your Section 2 inputs. To update them, go back to Section 2 and adjust your numbers.</div>
+      </div>
+    </div>
+
+    <!-- S3.6 — ROADMAP -->
+    <div class="bp-section bps-6">
+      <div class="bps-hdr">
+        <div class="bps-num">6</div>
+        <div class="bps-titles">
+          <div class="bps-tag">Section 6</div>
+          <div class="bps-name">90-Day Roadmap</div>
+        </div>
+      </div>
+      <div class="bps-body">
+        <div class="roadmap-cols">
+          <div class="rm-col rm-1">
+            <span class="rm-badge">Days 1–30 · Foundation</span>
+            <textarea class="bp-textarea" id="b-rm1" placeholder="Specific foundation actions — stakeholder alignment, vendor assessment, governance setup, success metric definition..." rows="5" oninput="autoResize(this);saveLS('b-rm1')"></textarea>
+          </div>
+          <div class="rm-col rm-2">
+            <span class="rm-badge">Days 31–60 · First Pilot</span>
+            <textarea class="bp-textarea" id="b-rm2" placeholder="Specific pilot actions — shadow mode launch, team training, performance tracking, weekly review cadence..." rows="5" oninput="autoResize(this);saveLS('b-rm2')"></textarea>
+          </div>
+          <div class="rm-col rm-3">
+            <span class="rm-badge">Days 61–90 · Evaluate</span>
+            <textarea class="bp-textarea" id="b-rm3" placeholder="Evaluate actions — review pilot data vs KPIs, go/no-go decision with rationale, present findings to leadership..." rows="5" oninput="autoResize(this);saveLS('b-rm3')"></textarea>
+          </div>
+        </div>
+        <div class="copilot-section">
+          <button class="copilot-toggle" onclick="toggleCopilot('cp6')">Copilot Prompt — 90-Day Roadmap</button>
+          <div class="copilot-box" id="cp6">
+            <div class="cb-inner">
+              <div class="cb-header"><div class="cb-tag">Copy into Copilot Chat</div><button class="copy-btn" onclick="copyPrompt('cp6-text',this)">Copy</button></div>
+              <div class="cb-prompt" id="cp6-text">Create a 90-day implementation roadmap for [YOUR USE CASE] in my [FUNCTION] function at Carelon.
+
+DAYS 1-30 — Foundation:
+3-4 specific actions for: stakeholder sign-off, governance framework setup, vendor shortlisting using the RAG scorecard, and defining the success metrics for the pilot. For each action name who does it.
+
+DAYS 31-60 — First Pilot:
+3-4 specific actions for: launching a shadow mode or limited pilot, completing team training on HITL protocols, establishing a weekly model performance review, and tracking early accuracy data.
+
+DAYS 61-90 — Evaluate and Decide:
+3-4 specific actions for: reviewing pilot results against the KPIs defined in Days 1-30, making a documented go/no-go/pivot decision, and presenting findings to the CMO, CCO, or relevant leadership.
+
+Be specific. Avoid phrases like "align stakeholders" without saying who and how. Each action should be something that could appear in a project plan.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end blueprint-sections -->
+</div><!-- end s3 -->
+</div><!-- end main -->
+
+<!-- ═══════════════════════════════════
+     NAVIGATION FOOTER
+═══════════════════════════════════ -->
+<div class="nav-footer">
+  <button class="nav-btn back" id="btn-back" onclick="navigate(-1)" disabled>← Back</button>
+  <div class="nav-step-label" id="nav-label">Section 1 of 3 — Feasibility Matrix</div>
+  <button class="nav-btn next" id="btn-next" onclick="navigate(1)">Continue to ROI Model →</button>
+</div>
+
+<!-- ═══════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════ -->
+<script>
+// ── STATE ──
+let currentStep = 1;
+const TOTAL_STEPS = 3;
+const stepLabels = ['Feasibility Matrix','ROI Model','Strategy Blueprint'];
+const nextLabels = ['Continue to ROI Model →','Continue to Blueprint →','Save as PDF'];
+
+// ── MATRIX DATA ──
+const ucData = [
+  {num:'1',name:'',fn:'',roi:0,feas:0,comp:0,ttv:0},
+  {num:'2',name:'',fn:'',roi:0,feas:0,comp:0,ttv:0},
+  {num:'3',name:'',fn:'',roi:0,feas:0,comp:0,ttv:0}
+];
+
+// ── NAVIGATION ──
+function navigate(dir) {
+  if(dir > 0 && currentStep === TOTAL_STEPS) { savePDF(); return; }
+  const next = currentStep + dir;
+  if(next < 1 || next > TOTAL_STEPS) return;
+  goToStep(next);
+}
+
+function goToStep(n) {
+  // Only allow jumping forward if previous steps done
+  if(n > currentStep + 1) return;
+  document.getElementById('s'+currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('s'+currentStep).classList.add('active');
+  updateProgress();
+  updateNav();
+  if(n === 2) populateS2Banner();
+  if(n === 3) updateROIinBlueprint();
+  window.scrollTo(0,0);
+}
+
+function updateProgress() {
+  for(let i=1; i<=3; i++){
+    const el = document.getElementById('pb'+i);
+    el.classList.remove('active','done');
+    if(i < currentStep) el.classList.add('done');
+    else if(i === currentStep) el.classList.add('active');
+    if(i < 3) {
+      const line = document.getElementById('pbl'+i);
+      line.classList.toggle('done', i < currentStep);
+    }
+  }
+}
+
+function updateNav() {
+  document.getElementById('btn-back').disabled = (currentStep === 1);
+  document.getElementById('btn-next').textContent = nextLabels[currentStep-1];
+  document.getElementById('nav-label').textContent = `Section ${currentStep} of ${TOTAL_STEPS} — ${stepLabels[currentStep-1]}`;
+}
+
+// ── AUTO RESIZE TEXTAREAS ──
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function resizeAll() {
+  document.querySelectorAll('.bp-textarea').forEach(t => autoResize(t));
+}
+
+// ── LOCALSTORAGE ──
+const LS_PREFIX = 'carelon_m10_';
+function saveLS(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  localStorage.setItem(LS_PREFIX+id, el.value);
+}
+function loadLS(id) {
+  const val = localStorage.getItem(LS_PREFIX+id);
+  const el = document.getElementById(id);
+  if(val && el) { el.value = val; if(el.classList.contains('bp-textarea')) autoResize(el); }
+}
+function saveROI() {
+  ['monthly_vol','cost_per','turnaround_before','ftes','auto_rate','ai_cost_per','turnaround_after','impl_cost','annual_lic','contingency'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) localStorage.setItem(LS_PREFIX+'roi_'+id, el.value);
+  });
+}
+function loadROI() {
+  ['monthly_vol','cost_per','turnaround_before','ftes','auto_rate','ai_cost_per','turnaround_after','impl_cost','annual_lic','contingency'].forEach(id => {
+    const val = localStorage.getItem(LS_PREFIX+'roi_'+id);
+    const el = document.getElementById(id);
+    if(val && el) el.value = val;
+  });
+}
+
+// ── MATRIX BUILD ──
+function buildMatrix() {
+  const tbody = document.getElementById('matrix-body');
+  tbody.innerHTML = '';
+  ucData.forEach((r,i) => {
+    const tr = document.createElement('tr');
+    tr.id = 'mr'+i;
+    tr.innerHTML = `
+      <td class="m-num">${r.num}</td>
+      <td>
+        <input class="m-input" id="mn${i}" type="text" placeholder="Use case description" value="${r.name}" oninput="ucData[${i}].name=this.value;saveUC();updateBadges()">
+        <input class="m-input" id="mf${i}" type="text" placeholder="Function / team" value="${r.fn}" style="margin-top:5px;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;" oninput="ucData[${i}].fn=this.value;saveUC()">
+      </td>
+      ${['roi','feas','comp','ttv'].map(c => `
+      <td style="text-align:center">
+        <select class="m-select" id="m${c}${i}" onchange="ucData[${i}].${c}=parseInt(this.value)||0;updateBadges();saveUC()">
+          <option value="0">—</option>
+          ${[1,2,3,4].map(v=>`<option value="${v}"${ucData[i][c]===v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </td>`).join('')}
+      <td class="m-total" id="mt${i}" style="color:var(--muted)">—</td>
+      <td class="m-badge" id="mb${i}"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateBadges();
+}
+
+function updateBadges() {
+  const totals = ucData.map(r => r.roi + r.feas + r.comp + r.ttv);
+  const max = Math.max(...totals);
+  ucData.forEach((r,i) => {
+    const t = totals[i];
+    const tEl = document.getElementById('mt'+i);
+    const bEl = document.getElementById('mb'+i);
+    const row = document.getElementById('mr'+i);
+    if(t === 0){ tEl.textContent='—'; tEl.style.color='var(--muted)'; bEl.innerHTML=''; row.classList.remove('top-row'); return; }
+    tEl.textContent = t;
+    tEl.style.color = t>=13?'var(--green)':t>=9?'var(--blue)':t>=5?'var(--gold)':'var(--red)';
+    row.classList.toggle('top-row', t===max && t>0);
+    let badge='', cls='';
+    if(t===max && t>0){ badge='★ Top Pick'; cls='badge-top'; }
+    else if(t>=9){ badge='Strong'; cls='badge-strong'; }
+    else { badge='Consider'; cls='badge-consider'; }
+    bEl.innerHTML=`<span class="badge-pill ${cls}">${badge}</span>`;
+  });
+}
+
+function saveUC() {
+  localStorage.setItem(LS_PREFIX+'ucdata', JSON.stringify(ucData));
+}
+function loadUC() {
+  const saved = localStorage.getItem(LS_PREFIX+'ucdata');
+  if(saved) {
+    const d = JSON.parse(saved);
+    d.forEach((r,i) => { Object.assign(ucData[i],r); });
+  }
+}
+
+function getTopPick() {
+  const totals = ucData.map(r => r.roi + r.feas + r.comp + r.ttv);
+  const maxIdx = totals.indexOf(Math.max(...totals));
+  return ucData[maxIdx].name || '—';
+}
+
+function populateS2Banner() {
+  const name = getTopPick();
+  document.getElementById('uc-banner-name').textContent = name || '—';
+}
+
+// ── ROI CALCULATION ENGINE ──
+function fmtM(n){ if(Math.abs(n)>=1e6)return `$${(n/1e6).toFixed(1)}M`; if(Math.abs(n)>=1e3)return `$${Math.round(n/1000)}K`; return `$${n.toFixed(0)}`; }
+function fmtN(n){ return n.toLocaleString('en-US'); }
+
+// Store latest ROI outputs for Blueprint auto-populate
+let roiOutputs = { saving:0, payback:null, roi3yr:0, cpdBefore:0, cpdAfter:0 };
+
+function recalc() {
+  const vol=parseFloat(document.getElementById('monthly_vol').value)||0;
+  const cpp=parseFloat(document.getElementById('cost_per').value)||0;
+  const tBef=parseFloat(document.getElementById('turnaround_before').value)||0;
+  const ftesN=parseFloat(document.getElementById('ftes').value)||0;
+  const aRate=parseFloat(document.getElementById('auto_rate').value)||0;
+  const aiCpp=parseFloat(document.getElementById('ai_cost_per').value)||0;
+  const tAft=parseFloat(document.getElementById('turnaround_after').value)||0;
+  const impl=parseFloat(document.getElementById('impl_cost').value)||0;
+  const lic=parseFloat(document.getElementById('annual_lic').value)||0;
+  const cont=parseFloat(document.getElementById('contingency').value)||0;
+
+  const autoVol=vol*(aRate/100), manualVol=vol-autoVol;
+  const currentAnnual=vol*cpp*12;
+  const afterMonthly=autoVol*aiCpp+manualVol*cpp;
+  const afterAnnual=afterMonthly*12;
+  const grossSaving=currentAnnual-afterAnnual;
+  const netSaving=grossSaving-lic;
+  const blendCPD=vol>0?afterMonthly/vol:0;
+  const contAmt=impl*(cont/100);
+  const totalInvest=impl+contAmt+lic;
+  const payback=netSaving>0?(totalInvest/netSaving)*12:null;
+  const net3yr=(netSaving*3)-impl-contAmt;
+  const roi3yr=totalInvest>0?(net3yr/totalInvest)*100:0;
+  const fteDeploy=ftesN*(aRate/100);
+  const tImpr=tBef>0&&tAft<tBef?((tBef-tAft)/tBef)*100:0;
+
+  // Store for blueprint
+  roiOutputs = { saving:netSaving, payback, roi3yr, cpdBefore:cpp, cpdAfter:blendCPD };
+
+  // Update S2 display
+  const savEl=document.getElementById('annual_saving');
+  savEl.textContent=fmtM(netSaving);
+  savEl.style.color=netSaving>=0?'var(--gold)':'var(--red)';
+
+  const payEl=document.getElementById('payback');
+  if(payback&&payback>0&&payback<120){payEl.textContent=`${payback.toFixed(1)} mo`;payEl.className=`mc-value ${payback<=18?'mc-pos':payback<=36?'mc-blue':'mc-neg'}`;}
+  else{payEl.textContent=netSaving<=0?'No return':'>10 yrs';payEl.className='mc-value mc-neg';}
+
+  const roiEl=document.getElementById('roi_3yr');
+  roiEl.textContent=`${roi3yr.toFixed(0)}%`;
+  roiEl.className=`mc-value ${roi3yr>=0?'mc-pos':'mc-neg'}`;
+
+  document.getElementById('cpd_before').textContent=`$${cpp.toFixed(2)}`;
+  document.getElementById('cpd_after').textContent=`$${blendCPD.toFixed(2)}`;
+
+  const maxCPD=Math.max(cpp,blendCPD,0.01);
+  document.getElementById('bar_before').style.width=`${Math.min((cpp/maxCPD)*100,100)}%`;
+  document.getElementById('bar_after').style.width=`${Math.min((blendCPD/maxCPD)*100,100)}%`;
+  document.getElementById('bar_before_val').textContent=`$${cpp.toFixed(2)}`;
+  document.getElementById('bar_after_val').textContent=`$${blendCPD.toFixed(2)}`;
+
+  document.getElementById('kpi_auto').textContent=`${fmtN(Math.round(autoVol))} / mo`;
+  document.getElementById('kpi_turnaround').textContent=tImpr>0?`${tImpr.toFixed(0)}% faster`:'—';
+  document.getElementById('kpi_ftes').textContent=`${fteDeploy.toFixed(0)} of ${ftesN}`;
+  document.getElementById('kpi_vol_saving').textContent=fmtM(grossSaving);
+  document.getElementById('kpi_total_invest').textContent=fmtM(totalInvest);
+
+  // Live-update blueprint Section 5 if visible
+  updateROIinBlueprint();
+}
+
+function updateROIinBlueprint() {
+  const {saving, payback, roi3yr, cpdBefore, cpdAfter} = roiOutputs;
+  document.getElementById('bp-saving').textContent = fmtM(saving);
+  document.getElementById('bp-saving').style.color = saving>=0?'var(--gold)':'var(--red)';
+  document.getElementById('bp-payback').textContent = payback&&payback>0&&payback<120 ? payback.toFixed(1) : '—';
+  document.getElementById('bp-roi3yr').textContent = `${roi3yr.toFixed(0)}%`;
+  document.getElementById('bp-cpd').textContent = cpdBefore>0 ? `$${cpdAfter.toFixed(2)}` : '—';
+  document.getElementById('bp-cpd-sub').textContent = cpdBefore>0 ? `down from $${cpdBefore.toFixed(2)}` : 'before → after';
+}
+
+function resetROI(){
+  const d={monthly_vol:200000,cost_per:18,turnaround_before:72,ftes:48,auto_rate:74,ai_cost_per:4.50,turnaround_after:0.025,impl_cost:2500000,annual_lic:1200000,contingency:20};
+  Object.entries(d).forEach(([id,v])=>{document.getElementById(id).value=v;});
+  recalc(); saveROI();
+}
+
+// ── COPILOT TOGGLES ──
+function toggleCopilot(id) {
+  const box = document.getElementById(id);
+  const btn = box.previousElementSibling;
+  const visible = box.classList.toggle('visible');
+  btn.classList.toggle('open', visible);
+}
+
+function copyPrompt(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── SAVE AS PDF ──
+function savePDF() {
+  // Update print header
+  document.getElementById('print-name').textContent = document.getElementById('pi-name').value || '—';
+  document.getElementById('print-fn').textContent = document.getElementById('pi-fn').value || '—';
+  document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('print-uc').textContent = getTopPick();
+  // Show all sections for print
+  document.querySelectorAll('.section').forEach(s=>s.style.display='block');
+  window.print();
+  // Restore after print
+  setTimeout(()=>{
+    document.querySelectorAll('.section').forEach(s=>s.style.display='');
+    document.getElementById('s'+currentStep).classList.add('active');
+  },1000);
+}
+
+// ── BLUEPRINT FIELD SAVES ──
+const bpFields=['b-vision','b-t1-name','b-t1-desc','b-t1-own','b-t1-kpi','b-t2-name','b-t2-desc','b-t2-own','b-t2-kpi','b-t3-name','b-t3-desc','b-t3-own','b-t3-kpi','b-gov-owner','b-gov-hitl','b-gov-fail','b-sk1-cap','b-sk1-who','b-sk1-when','b-sk2-cap','b-sk2-who','b-sk2-when','b-sk3-cap','b-sk3-who','b-sk3-when','b-rm1','b-rm2','b-rm3'];
+const bpSelects=['b-sk1-how','b-sk2-how','b-sk3-how'];
+
+// ── INIT ──
+function init() {
+  // Today's date
+  const d = new Date();
+  document.getElementById('today-date').textContent = d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Load saved data
+  loadUC();
+  loadLS('pi-name'); loadLS('pi-fn');
+  loadROI();
+  bpFields.forEach(id => loadLS(id));
+  bpSelects.forEach(id => {
+    const val = localStorage.getItem(LS_PREFIX+id);
+    const el = document.getElementById(id);
+    if(val && el) el.value = val;
+  });
+
+  // Build matrix
+  buildMatrix();
+  // Sync matrix inputs from loaded ucData
+  ucData.forEach((r,i)=>{
+    const nEl=document.getElementById('mn'+i); if(nEl) nEl.value=r.name;
+    const fEl=document.getElementById('mf'+i); if(fEl) fEl.value=r.fn;
+    ['roi','feas','comp','ttv'].forEach(c=>{
+      const el=document.getElementById('m'+c+i); if(el) el.value=r[c]||0;
+    });
+  });
+  updateBadges();
+
+  // Initial ROI calc
+  recalc();
+  resizeAll();
+  updateNav();
+  updateProgress();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
